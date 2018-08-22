@@ -5701,6 +5701,8 @@ static int shdisp_proc_write(struct file *file, const char *buffer, unsigned lon
             printk("[SHDISP] POWER_ON_PARAM (LOW : %d, HIGH : %d)\n", shdisp_pfs.par[1], shdisp_pfs.par[2]);
             prox_params.threshold_low  = (unsigned int)shdisp_pfs.par[1];
             prox_params.threshold_high = (unsigned int)shdisp_pfs.par[2];
+            shdisp_bdic_API_set_prox_sensor_param(&prox_params);
+
             ret = shdisp_api_prox_sensor_pow_ctl(SHDISP_PROX_SENSOR_POWER_ON, &prox_params);
             break;
         case 0x10:

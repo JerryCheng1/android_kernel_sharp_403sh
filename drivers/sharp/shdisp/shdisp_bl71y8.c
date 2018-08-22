@@ -121,6 +121,17 @@
 #define SHDISP_BDIC_RESTORE_REGS(x)         (shdisp_bdic_seq_regset(x, ARRAY_SIZE(x)))
 
 #define SHDISP_BDIC_AVE_ADO_READ_TIMES          (5)
+
+
+#define PSALS_CORRECT_PROH_HIGH_VAL(val) \
+            if ((val==0x068) || (val==0x69)) { \
+                val = 0x6A; \
+            }
+#define PSALS_CORRECT_PROH_LOW_VAL(val) \
+            if ((val==0x068) || (val==0x69)) { \
+                val = 0x67; \
+            }
+
 /* ------------------------------------------------------------------------- */
 /* TYPES                                                                     */
 /* ------------------------------------------------------------------------- */
@@ -521,6 +532,34 @@ static void shdisp_bdic_set_default_sensor_param(struct shdisp_photo_sensor_adj 
 
     return;
 }
+
+
+
+/* ------------------------------------------------------------------------- */
+/* shdisp_bdic_API_correct_proh_val                                          */
+/* ------------------------------------------------------------------------- */
+unsigned char shdisp_bdic_API_correct_proh_val(unsigned char value)
+{
+    static struct shdisp_bdic_prohibit_value {
+        unsigned char prohibit;
+        unsigned char correct;
+    } const shdisp_bdic_prohibit_tbl[] = {
+        { 0x68, 0x67 },
+        { 0x69, 0x6A },
+    };
+
+    unsigned int cnt = 0;
+    for (; cnt < ARRAY_SIZE(shdisp_bdic_prohibit_tbl); cnt++) {
+        if (shdisp_bdic_prohibit_tbl[cnt].prohibit == value) {
+            SHDISP_DEBUG(": change to %X from %X",
+                shdisp_bdic_prohibit_tbl[cnt].correct, value);
+            value = shdisp_bdic_prohibit_tbl[cnt].correct;
+            break;
+        }
+    }
+    return value;
+}
+
 
 /* ------------------------------------------------------------------------- */
 /* shdisp_bdic_API_als_sensor_adjust                                         */
@@ -1834,7 +1873,7 @@ int shdisp_bdic_API_als_sensor_pow_ctl(int dev_type, int power_mode)
     }
 
 #ifdef SHDISP_ALS_INT
-    if ((dev_type == sensor_int_trigger.type) || (power_mode == SHDISP_PHOTO_SENSOR_DISABLE)) {
+    if ((dev_type == sensor_int_trigger.type) && (power_mode == SHDISP_PHOTO_SENSOR_DISABLE)) {
         memset(&sensor_int_trigger, 0x00, sizeof(struct shdisp_photo_sensor_int_trigger));
         shdisp_bdic_PD_REG_int_setting(&sensor_int_trigger);
 
@@ -2475,7 +2514,12 @@ static int shdisp_bdic_LD_PHOTO_SENSOR_get_lightinfo(struct shdisp_light_info *v
     }
     SHDISP_DEBUG("lux=%ld clear=%d ir=%d", lux, clear, ir);
     value->lux = (unsigned int)lux;
-    value->clear_ir_rate = (((unsigned int)ir * 1000) / (unsigned int)clear + 5 ) / 10;
+    if (clear < 1) {
+        SHDISP_DEBUG("[caution]clear is zero");
+        value->clear_ir_rate = 0;
+    } else {
+        value->clear_ir_rate = (((unsigned int)ir * 1000) / (unsigned int)clear + 5 ) / 10;
+    }
     shdisp_bdic_IO_bank_set(0x00);
     shdisp_bdic_IO_read_reg(BDIC_REG_ADO_INDEX, &level);
     value->level = (unsigned short)(level & 0x1F);
@@ -3416,7 +3460,8 @@ static void shdisp_bdic_LD_LCD_BKL_get_pwm_param(int mode, int level, unsigned c
 
     pwm_val *= (unsigned char)SHDISP_BKL_CURRENT_UPPER_LIMIT;
     pwm_val /= (unsigned short)SHDISP_BKL_PWM_UPPER_LIMIT;
-    *opt_val = (unsigned char)pwm_val;
+    *opt_val = shdisp_bdic_API_correct_proh_val((unsigned char)pwm_val);
+    SHDISP_INFO("mode=%d, pwm=0x%2lX, opt_val=0x%2X", mode, pwm_val, *opt_val);
     return;
 }
 
@@ -4083,13 +4128,31 @@ static int shdisp_bdic_PD_psals_als_deinit_ps_on(void)
 /* ------------------------------------------------------------------------- */
 static int shdisp_bdic_PD_psals_write_threshold(struct shdisp_prox_params *prox_params)
 {
+    unsigned char temp_low[2];
+    unsigned char temp_high[2];
     if (!prox_params) {
         return SHDISP_RESULT_FAILURE;
     }
-    shdisp_bdic_ps_init_set_threshold[0].data = (unsigned char)(prox_params->threshold_low & 0x00FF);
-    shdisp_bdic_ps_init_set_threshold[1].data = (unsigned char)((prox_params->threshold_low >> 8) & 0x00FF);
-    shdisp_bdic_ps_init_set_threshold[2].data = (unsigned char)(prox_params->threshold_high & 0x00FF);
-    shdisp_bdic_ps_init_set_threshold[3].data = (unsigned char)((prox_params->threshold_high >> 8) & 0x00FF);
+    temp_low[0] = (unsigned char)(prox_params->threshold_low & 0x00FF);
+    temp_low[1] = (unsigned char)((prox_params->threshold_low >> 8) & 0x00FF);
+    temp_high[0] = (unsigned char)(prox_params->threshold_high & 0x00FF);
+    temp_high[1] = (unsigned char)((prox_params->threshold_high >> 8) & 0x00FF);
+    SHDISP_DEBUG("prox_pramams from: low = 0x%02x, 0x%02x: high = 0x%02x, 0x%02x",
+            temp_low[0], temp_low[1], temp_high[0], temp_high[1]);
+
+    PSALS_CORRECT_PROH_LOW_VAL(temp_low[0])
+    PSALS_CORRECT_PROH_LOW_VAL(temp_low[1])
+    PSALS_CORRECT_PROH_HIGH_VAL(temp_high[0])
+    PSALS_CORRECT_PROH_HIGH_VAL(temp_high[1])
+
+    shdisp_bdic_ps_init_set_threshold[0].data = temp_low[0];
+    shdisp_bdic_ps_init_set_threshold[1].data = temp_low[1];
+    shdisp_bdic_ps_init_set_threshold[2].data = temp_high[0];
+    shdisp_bdic_ps_init_set_threshold[3].data = temp_high[1];
+
+    SHDISP_DEBUG("prox_pramams to  : low = 0x%02x, 0x%02x: high = 0x%02x, 0x%02x",
+            temp_low[0], temp_low[1], temp_high[0], temp_high[1]);
+
     return SHDISP_RESULT_SUCCESS;
 }
 
@@ -4101,8 +4164,8 @@ static int shdisp_bdic_PD_psals_write_threshold(struct shdisp_prox_params *prox_
 static int shdisp_bdic_PD_REG_ADO_get_opt(unsigned short *ado, unsigned short *clear, unsigned short *ir)
 {
     int ret, shift_tmp,retry;
-    unsigned long ado0, ado1;
-    unsigned short als0, als1;
+    uint64_t ado0, ado1;
+    uint64_t als0, als1;
     unsigned short alpha, beta, gamma;
     unsigned char rval[(SENSOR_REG_D1_MSB + 1) - SENSOR_REG_D0_LSB];
     signed char range0, res, flag_a;
@@ -4141,12 +4204,11 @@ static int shdisp_bdic_PD_REG_ADO_get_opt(unsigned short *ado, unsigned short *c
     }
     als0 = (rval[1] << 8 | rval[0]);
     als1 = (rval[3] << 8 | rval[2]);
-    SHDISP_DEBUG("als1*16=%d, als0*15=%d\n", als1 * SHDISP_BDIC_RATIO_OF_ALS0, als0 * SHDISP_BDIC_RATIO_OF_ALS1);
+    SHDISP_DEBUG("als1*16=%lld, als0*15=%lld\n", als1 * SHDISP_BDIC_RATIO_OF_ALS0, als0 * SHDISP_BDIC_RATIO_OF_ALS1);
 
     SHDISP_BDIC_REGSET(shdisp_bdic_reg_ar_ctrl);
     shdisp_SYS_delay_us(1000);
 
-    SHDISP_DEBUG("als1*16=%d, als0*15=%d\n", als1 * SHDISP_BDIC_RATIO_OF_ALS0, als0 * SHDISP_BDIC_RATIO_OF_ALS1);
 
     if ((als1 * SHDISP_BDIC_RATIO_OF_ALS0) > (als0 * SHDISP_BDIC_RATIO_OF_ALS1)) {
         alpha = s_state_str.photo_sensor_adj.als_adjust[1].als_adj0;
@@ -4155,9 +4217,11 @@ static int shdisp_bdic_PD_REG_ADO_get_opt(unsigned short *ado, unsigned short *c
         if (gamma < 16) {
             ado0 = (((als0 * alpha) - (als1 * beta)) << gamma) >> 15;
         } else {
-            ado0 = (((als0 * alpha) - (als1 * beta)) << (32-gamma)) >> 15;
+            ado0 = (((als0 * alpha) - (als1 * beta)) >> (32-gamma)) >> 15;
         }
-        SHDISP_DEBUG("ROUTE-1 als0=%04X, als1=%04X, alpha=%04X, gamma=%02X\n", als0, als1, alpha, gamma);
+        SHDISP_DEBUG("ROUTE-1 als0=%04llX, als1=%04llX, alpha=%04X, beta=%04X, gamma=%02x, ado0=%08llx",
+                                                        als0, als1, alpha, beta, gamma, ado0);
+
     } else {
         alpha = s_state_str.photo_sensor_adj.als_adjust[0].als_adj0;
         beta  = s_state_str.photo_sensor_adj.als_adjust[0].als_adj1;
@@ -4165,10 +4229,11 @@ static int shdisp_bdic_PD_REG_ADO_get_opt(unsigned short *ado, unsigned short *c
         if (gamma < 16) {
             ado0 = (((als0 * alpha) - (als1 * beta)) << gamma) >> 15;
         } else {
-            ado0 = (((als0 * alpha) - (als1 * beta)) << (32-gamma)) >> 15;
+            ado0 = (((als0 * alpha) - (als1 * beta)) >> (32-gamma)) >> 15;
         }
-        SHDISP_DEBUG("ROUTE-2 als0=%04X, als1=%04X, alpha=%04X, beta=%04X, gamma=%02X\n", als0, als1,
-                                                                                        alpha, beta, gamma);
+        SHDISP_DEBUG("ROUTE-2 als0=%04llX, als1=%04llX, alpha=%04X, beta=%04X, gamma=%02x, ado0=%08llx",
+                                                        als0, als1, alpha, beta, gamma, ado0);
+
     }
 
     if (res < 3) {
@@ -4191,10 +4256,10 @@ static int shdisp_bdic_PD_REG_ADO_get_opt(unsigned short *ado, unsigned short *c
         *ado = (unsigned short)ado1;
     }
     if (clear) {
-        *clear = als0;
+        *clear = (unsigned short)als0;
     }
     if (ir) {
-        *ir = als1;
+        *ir = (unsigned short)als1;
     }
 
     SHDISP_TRACE("out\n");
