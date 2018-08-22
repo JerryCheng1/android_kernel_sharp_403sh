@@ -1,0 +1,525 @@
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/include/ "sharp-pa28-camera-sensor.dtsi"
+/include/ "sharp-pa28-shdisp.dtsi"
+/include/ "sharp-pa28-pm8226.dtsi"
+/include/ "sharp-pa28-sdcc.dtsi"
+/include/ "sharp-pa28-usb.dtsi"
+/ {
+	aliases {
+		spi0 = "";
+		spi3 = &blsp3_spi;
+		spi4 = &blsp4_spi;
+		spi5 = &blsp5_spi;
+/*		serial1 = &blsp1_serial;*/
+		serial2 = &blsp2_serial;
+		serial6 = &blsp6_serial;
+	};
+};
+
+&soc {
+
+	/*****************************************/
+	/*  BLSP1                                */
+	/*****************************************/
+
+	/*---------------------*/
+	/* BLSP1 QUP0(BLSP#1)  */
+	/* 0xf9923000          */
+	/* 0xf991d000          */
+	/*---------------------*/
+
+	blsp1_serial: serial@f991d000 {
+        /* IrDA start */
+        qcom,config-gpio = <0>;
+        sharp,use-irda;
+        /* IrDA end */
+        status = "disabled";
+	};
+
+	blsp1_i2c: i2c@f9923000 {
+		status = "ok";
+
+/* => SH_AUDIO_DRIVER 16-062 */
+		shsmartamp@34 {
+			status = "ok";
+			compatible = "sharp,shsmartamp_i2c";
+			sharp,shsmartamp-en-gpio = <&msmgpio 23 0>;
+			reg = <0x34>;
+		};
+/* <= SH_AUDIO_DRIVER 16-062 */
+
+		felica_cen@57 {
+            status = "ok";
+            compatible = "sharp,felica_cen";
+            reg = <0x57>;
+           interrupt-parent = <&msmgpio>;
+        };
+
+	};
+
+	spi@f9923000 {
+		ethernet-switch@3 {
+			compatible = "micrel,ks8851";
+			reg = <3>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <115 0x8>;
+			spi-max-frequency = <4800000>;
+			rst-gpio = <&msmgpio 114 0>;
+			vdd-io-supply = <&pm8226_lvs1>;
+			vdd-phy-supply = <&pm8226_lvs1>;
+		};
+	};
+
+	/*---------------------*/
+	/* BLSP1 QUP1(BLSP#2)  */
+	/* 0xf9924000          */
+	/* 0xf991e000          */
+	/*---------------------*/
+	blsp2_serial: serial@f991e000 {
+		status = "ok";
+	};
+	blsp2_i2c: i2c@f9924000 {
+		status = "disabled";
+	};
+
+	/*---------------------*/
+	/* BLSP1 QUP2(BLSP#3)  */
+	/* 0xf9925000          */
+	/* 0xf991f000          */
+	/*---------------------*/
+
+	i2c@f9925000 { /* BLSP1 QUP3 */
+		nfc-nci@0e {
+			compatible = "qcom,nfc-nci";
+			reg = <0x0e>;
+			qcom,irq-gpio = <&msmgpio 21 0x00>;
+			qcom,dis-gpio = <&msmgpio 20 0x00>;
+			qcom,clk-src = "BBCLK2";
+			interrupt-parent = <&msmgpio>;
+			interrupts = <21 0>;
+			qcom,clk-gpio = <&pm8226_gpios 3 0>;
+		};
+	};
+
+	serial@f991f000 {
+		status = "disabled";
+	};
+
+	blsp3_spi: spi@f9925000 {
+/*		qcom,use-bam;*/
+		qcom,gpio-cs0  = <&msmgpio 10 0>;
+		qcom,gpio-cs1  = <>;
+/*		qcom,gpio-cs1  = <&msmgpio 110 0>;*/
+/*		qcom,gpio-cs2  = <&msmgpio 111 0>;*/
+		/* Boot Gr. 2014-10-25 temporarily modified S */
+		status = "ok";
+		/* Boot Gr. 2014-10-25 temporarily modified E */
+		shdtv_spi@0 {
+			status = "ok";
+			compatible = "sharp,shdtv_spi";
+			reg = <0>;
+			spi-max-frequency = <20000000>;
+/*			spi-cpol; */
+/*			spi-cpha; */
+		};
+		shgrip_dev@1 {
+			status = "ok";
+			compatible = "sharp,shgrip_dev";
+			reg = <1>;
+			spi-max-frequency = <2000000>;
+		};
+	};
+	/*---------------------*/
+	/* BLSP1 QUP3(BLSP#4)  */
+	/* 0xf9926000          */
+	/* 0xf9920000          */
+	/*---------------------*/
+
+	blsp4_spi: spi@f9926000 {
+		qcom,gpio-cs0  = <&msmgpio 14 0>;
+		status = "ok";
+		sensorhub@0 {
+			status = "ok";
+			compatible = "sharp,sensorhub";
+			reg = <0>;
+			spi-max-frequency = <960000>;
+			spi-cpol;
+			spi-cpha;
+			shub,shub_acc_axis_val = <1>;
+			shub,shub_gyro_axis_val = <1>;
+			shub,shub_mag_axis_val = <1>;
+		};
+	};
+
+	/*---------------------*/
+	/* BLSP1 QUP4(BLSP#5)  */
+	/* 0xf9927000          */
+	/* 0xf9921000          */
+	/*---------------------*/
+
+	blsp5_spi: spi@f9927000 {
+		qcom,gpio-cs0  = <&msmgpio 18 0>;
+		status = "ok";
+
+		shtps_rmi@0 {
+			status = "ok";
+			compatible = "sharp,shtps_rmi";
+			reg = <0>;
+			spi-max-frequency = <400000>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <119 0>;
+			spi-cpol;
+			spi-cpha;
+
+			/* user defined property */
+			shtps_rmi,rst_pin = <&msmgpio 120 0>;
+			shtps_rmi,vbus_1_8V = <&pm8226_lvs1>;
+			shtps_rmi,vdd_3_0V = <&pm8226_l23>;
+		};
+	};
+
+	i2c@f9927000 { /* BLSP1 QUP5 */
+		synaptics@20 {
+			compatible = "synaptics,rmi4";
+			reg = <0x20>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <17 0x2008>;
+			vdd-supply = <&pm8226_l19>;
+			vcc_i2c-supply = <&pm8226_lvs1>;
+			synaptics,reset-gpio = <&msmgpio 16 0x00>;
+			synaptics,irq-gpio = <&msmgpio 17 0x2008>;
+			synaptics,button-map = <139 102 158>;
+			synaptics,fw-image-name = "PR1468813.img";
+			synaptics,i2c-pull-up;
+			synaptics,power-down;
+			synaptics,disable-gpios;
+		};
+	};
+
+	/*---------------------*/
+	/* BLSP1 QUP5(BLSP#6)  */
+	/*---------------------*/
+	blsp6_serial: serial@f9922000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0xf9922000 0x1000>;
+		interrupts = <0 112 0>;
+		qcom,config-gpio = <1>;
+		qcom,tx-gpio = <&msmgpio 20 0>;
+		qcom,rx-gpio = <&msmgpio 21 0>;
+		qcom,use-pm;
+		status = "ok";
+
+/* => SH_AUDIO_DRIVER 16-065 */
+		qcom,msm-bus,name = "buart6";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<84 512 0 0>,
+				<84 512 500 800>;
+/* <= SH_AUDIO_DRIVER 16-065 */
+	};
+
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+
+//		camera_focus {
+//			label = "camera_focus";
+//			gpios = <&msmgpio 108 0x1>;
+//			linux,input-type = <1>;
+//			linux,code = <0x210>;
+//			gpio-key,wakeup;
+//			debounce-interval = <15>;
+//		};
+
+//		camera_snapshot {
+//			label = "camera_snapshot";
+//			gpios = <&msmgpio 107 0x1>;
+//			linux,input-type = <1>;
+//			linux,code = <0x2fe>;
+//			gpio-key,wakeup;
+//			debounce-interval = <15>;
+//		};
+
+		vol_up {
+			label = "volume_up";
+			gpios = <&msmgpio 106 0x1>;
+			linux,input-type = <1>;
+			linux,code = <115>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+
+		vol_down {
+			label = "volume_down";
+			gpios = <&msmgpio 107 0x1>;
+			linux,input-type = <1>;
+			linux,code = <114>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+
+	sound {
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"LDO_H", "MCLK",
+			"SPK_OUT", "MCLK",
+			"SPK_OUT", "EXT_VDD_SPKR",
+			"AMIC1", "MIC BIAS1 Internal1",
+			"MIC BIAS1 Internal1", "Handset Mic",
+			"AMIC2", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Headset Mic",
+			"AMIC4", "MIC BIAS2 External",
+			"MIC BIAS2 External", "ANCRight Headset Mic",
+			"AMIC5", "MIC BIAS2 External",
+			"MIC BIAS2 External", "ANCLeft Headset Mic",
+			"DMIC1", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic1",
+			"DMIC2", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic2",
+			"DMIC3", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic3",
+			"DMIC4", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic4";
+
+		qcom,cdc-mclk-gpios = <&pm8226_gpios 1 0>;
+		qcom,cdc-vdd-spkr-gpios = <&pm8226_gpios 2 0>;
+		qcom,headset-jack-type-NC;
+		qcom,mbhc-audio-jack-type = "6-pole-jack";
+	};
+
+	sound-9302 {
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"LDO_H", "MCLK",
+/* => SH_AUDIO_DRIVER 16-002 */
+//			"SPK_OUT", "MCLK",
+//			"SPK_OUT", "EXT_VDD_SPKR",
+                        "Lineout_1 amp", "LINEOUT1",
+                        "Lineout_2 amp", "LINEOUT2",
+/* <= SH_AUDIO_DRIVER 16-002 */
+			"AMIC1", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Handset Mic",
+			"AMIC2", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Headset Mic",
+			"AMIC3", "MIC BIAS1 External",
+/* => SH_AUDIO_DRIVER 16-060 */
+//			"MIC BIAS1 External", "Handset Mic";
+			"MIC BIAS1 External", "Secondary Mic",
+			"AMIC4", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Tertiary Mic";
+/* <= SH_AUDIO_DRIVER 16-060 */
+		qcom,cdc-mclk-gpios = <&pm8226_gpios 1 0>;
+/* => SH_AUDIO_DRIVER 16-002 */
+//		 qcom,cdc-vdd-spkr-gpios = <&pm8226_gpios 2 0>;
+		/delete-property/ qcom,cdc-vdd-spkr-gpios;
+/* => SH_AUDIO_DRIVER 16-065 */
+               //qcom,cdc-lineout-spkr-gpios = <&msmgpio 20 0>;
+               /delete-property/ qcom,cdc-lineout-spkr-gpios;
+/* <= SH_AUDIO_DRIVER 16-065 */
+/* <= SH_AUDIO_DRIVER 16-002 */
+/* => SH_AUDIO_DRIVER 16-063 */
+		//qcom,headset-jack-type-NC;
+		/delete-property/ qcom,headset-jack-type-NC;
+		qcom,mbhc-audio-jack-type = "4-pole-jack";
+/* <= SH_AUDIO_DRIVER 16-063 */
+	};
+
+/* SH_AUDIO_DRIVER-> */ /*16-027*/
+	qcom,avtimer {
+		compatible = "qcom,avtimer";
+			reg = <0xfe053008 0x4>,
+				<0xfe05300c 0x4>;
+			reg-names = "avtimer_lsb_addr", "avtimer_msb_addr";
+	};
+/* SH_AUDIO_DRIVER<- */ /*16-027*/
+};
+
+&sdcc1 {
+	vdd-supply = <&pm8226_l17>;
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <800 500000>;
+
+	vdd-io-supply = <&pm8226_l6>;
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <250 154000>;
+
+	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
+	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
+
+	qcom,clk-rates = <400000 25000000 50000000 100000000 200000000>;
+	qcom,sup-voltages = <2950 2950>;
+
+	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
+	qcom,nonremovable;
+
+	status = "disabled";
+};
+
+&sdcc2 {
+	vdd-supply = <&pm8226_l18>;
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <9000 800000>;
+
+	vdd-io-supply = <&pm8226_l21>;
+	qcom,vdd-io-voltage-level = <1800000 2950000>;
+	qcom,vdd-io-current-level = <6 22000>;
+
+	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
+	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
+
+	qcom,clk-rates = <400000 25000000 50000000 100000000 200000000>;
+	qcom,sup-voltages = <2950 2950>;
+
+	qcom,xpc;
+	qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50", "SDR104";
+	qcom,current-limit = <600>;
+
+	#address-cells = <0>;
+	interrupt-parent = <&sdcc2>;
+	interrupts = <0 1 2>;
+	#interrupt-cells = <1>;
+	interrupt-map-mask = <0xffffffff>;
+	interrupt-map = <0 &intc 0 125 0
+			1 &intc 0 220 0
+			2 &msmgpio 38 0x3>;
+	interrupt-names = "core_irq", "bam_irq", "status_irq";
+	cd-gpios = <&msmgpio 38 0x1>;
+
+	status = "disabled";
+};
+
+&sdcc3 {
+	qcom,sup-voltages = <1800 1800>;
+	status = "disabled";
+};
+
+&sdhc_3 {
+	qcom,sup-voltages = <1800 1800>;
+	status = "disabled";
+};
+
+/* => SH_AUDIO_DRIVER 16-065 */
+&slim_msm {
+/* => SH_AUDIO_DRIVER 16-063 */
+	tapan_codec {
+		qcom,cdc-micbias1-ext-cap;
+		qcom,cdc-micbias2-ext-cap;
+	};
+/* <= SH_AUDIO_DRIVER 16-063 */
+
+	es804_codec {
+		compatible = "es804-codec-gen0";
+		elemental-addr = [00 01 83 20 BE 02];
+		adnc,laddr = <0xf0>;
+		slim-ifd = "es804-codec-intf";
+		slim-ifd-elemental-addr = [00 00 83 20 BE 02];
+
+		adnc,power-gpio = <&msmgpio 97 0>;
+		adnc,reset-gpio = <&msmgpio 98 0>;
+		adnc,gpioa-gpio = <&msmgpio 51 0>;
+		adnc,gpiob-gpio = <&msmgpio 52 0>;
+		adnc,extclk-gpio = <&msmgpio 33 0>;
+
+		adnc,enable_hs_uart_intf = <1>;
+	};
+};
+/* <= SH_AUDIO_DRIVER 16-065 */
+
+&spmi_bus {
+	qcom,pm8226@0 {
+		qcom,leds@a100 {
+			status = "okay";
+			qcom,led_mpp_2 {
+				label = "mpp";
+				linux,name = "button-backlight";
+				linux,default-trigger = "none";
+				qcom,default-state = "off";
+				qcom,max-current = <40>;
+				qcom,current-setting = <5>;
+				qcom,id = <6>;
+				qcom,mode = "manual";
+				qcom,source-sel = <1>;
+				qcom,mode-ctrl = <0x60>;
+			};
+		};
+
+		qcom,leds@a300 {
+			status = "okay";
+			qcom,led_mpp_4 {
+				label = "mpp";
+				linux,name = "green";
+				linux,default-trigger = "battery-full";
+				qcom,default-state = "off";
+				qcom,max-current = <40>;
+				qcom,current-setting = <5>;
+				qcom,id = <6>;
+				qcom,mode = "pwm";
+				qcom,pwm-us = <1000>;
+				qcom,source-sel = <8>;
+				qcom,mode-ctrl = <0x60>;
+				qcom,pwm-channel = <0>;
+				qcom,start-idx = <1>;
+				qcom,ramp-step-ms = <120>;
+				qcom,duty-pcts = [00 00 00 00 00
+						  00 00 00 00 00
+						  50 00 00 00 00
+						  00 00 00 00 00
+						  00];
+				qcom,use-blink;
+			};
+		};
+
+		qcom,leds@a500 {
+			status = "okay";
+			qcom,led_mpp_6 {
+				label = "mpp";
+				linux,name = "red";
+				linux,default-trigger = "battery-charging";
+				qcom,default-state = "off";
+				qcom,max-current = <40>;
+				qcom,current-setting = <5>;
+				qcom,id = <6>;
+				qcom,mode = "pwm";
+				qcom,pwm-us = <1000>;
+				qcom,mode-ctrl = <0x60>;
+				qcom,source-sel = <10>;
+				qcom,pwm-channel = <5>;
+				qcom,start-idx = <1>;
+				qcom,ramp-step-ms = <120>;
+				qcom,duty-pcts = [00 00 00 00 00
+						  00 00 00 00 00
+						  50 00 00 00 00
+						  00 00 00 00 00
+						  00];
+				qcom,use-blink;
+			};
+		};
+	};
+
+	qcom,pm8226@1 {
+		qcom,vibrator@c000 {
+			status = "okay";
+			qcom,vib-timeout-ms = <15000>;
+			qcom,vib-vtg-level-mV = <3000>;
+		};
+	};
+};

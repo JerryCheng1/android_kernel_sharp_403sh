@@ -1,0 +1,31 @@
+#
+# audio device configuration
+#
+# CONFIG_SH_AUDIO_DRIVER newly created
+
+menu "SHARP audio driver"
+
+comment "SHARP audio drivers"
+
+config SH_AUDIO_DRIVER_MODEL_NUMBER
+	int "SH_AUDIO_DRIVER_MODEL_NUMBER"
+	range 0 999
+	default "0"
+
+config SH_AUDIO_DRIVER
+	tristate "SHARP Audio Driver customized"
+	default y
+
+#/* SH_AUDIO_DRIVER -> */ /* 16-061 */
+config SHRECEIVER_LM48560
+	tristate "SHARP receiver lm48560"
+	default n
+#/* SH_AUDIO_DRIVER <- */ /* 16-061 */
+
+#/* SH_AUDIO_DRIVER -> */ /* 16-062 */
+config SH_AUDIO_SMARTAMP
+	tristate "SHARP Smart AMP SSM4329"
+	default n
+#/* SH_AUDIO_DRIVER <- */ /* 16-062 */
+
+endmenu
