@@ -1892,6 +1892,12 @@ static long qcedev_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		err = qcedev_hash_final(&qcedev_areq, handle);
 		if (err)
 			return err;
+
+		if (handle->sha_ctxt.diglen > QCEDEV_MAX_SHA_DIGEST) {
+			pr_err("Invalid sha_ctxt.diglen %d\n",
+					handle->sha_ctxt.diglen);
+			return -EINVAL;
+		}
 		qcedev_areq.sha_op_req.diglen = handle->sha_ctxt.diglen;
 		memcpy(&qcedev_areq.sha_op_req.digest[0],
 				&handle->sha_ctxt.digest[0],
@@ -1923,6 +1929,12 @@ static long qcedev_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		err = qcedev_hash_final(&qcedev_areq, handle);
 		if (err)
 			return err;
+
+		if (handle->sha_ctxt.diglen > QCEDEV_MAX_SHA_DIGEST) {
+			pr_err("Invalid sha_ctxt.diglen %d\n",
+					handle->sha_ctxt.diglen);
+			return -EINVAL;
+		}
 		qcedev_areq.sha_op_req.diglen =	handle->sha_ctxt.diglen;
 		memcpy(&qcedev_areq.sha_op_req.digest[0],
 				&handle->sha_ctxt.digest[0],
@@ -2242,7 +2254,7 @@ static ssize_t _debug_stats_read(struct file *file, char __user *buf,
 	int len;
 
 	len = _disp_stats(qcedev);
-
+	if(len <= count)
 	rc = simple_read_from_buffer((void __user *) buf, len,
 			ppos, (void *) _debug_read_buf, len);
 
